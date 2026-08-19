@@ -9,10 +9,11 @@ kiểu CleanShot X cho Windows 11, viết bằng C# / .NET 8 WPF.
 - Visual Studio 2022 (17.8+) với workload **.NET desktop development**, hoặc .NET 8 SDK + editor bất kỳ.
 - Mở `WinShootX.sln`, restore NuGet packages, build.
 
-> Lưu ý: dự án này **không build được trên Linux/macOS** vì WPF và các WinRT API
-> (`Windows.Media.Ocr`) chỉ chạy trên Windows. Scaffold được viết trong môi trường Linux nên
-> **chưa được build/chạy thử thực tế** — hãy build lần đầu trên máy Windows và báo lại nếu gặp lỗi
-> biên dịch (nhiều khả năng chỉ là lỗi nhỏ do gõ tay, không phải lỗi kiến trúc).
+> Lưu ý: **chạy** app này (hotkey thật, WinRT OCR, DPI thật...) chỉ hoạt động trên Windows. Việc
+> **build** thì kiểm chứng được cả trên Linux/macOS bằng cách restore/build với
+> `/p:EnableWindowsTargeting=true` (SDK .NET 8 tải sẵn reference assembly của WPF/WinRT qua NuGet) —
+> đây chính là cách CI (`.github/workflows/build.yml`) xác nhận code biên dịch được trước khi build
+> thật (và chụp ảnh demo UI) trên `windows-latest`.
 
 ## Chạy thử nhanh
 
@@ -69,27 +70,30 @@ WinShootX/
 | Hotkey toàn cục | Đã code |
 | Thanh công cụ nổi sau khi chụp | Đã code |
 | Trình chú thích (arrow/rect/ellipse/freehand/text/highlight/step) | Đã code |
-| Bộ icon vector dùng chung (không emoji) | Đã code — xem PRD mục 7 và `Views/Controls/` |
-| Blur/Pixelate trong trình chú thích | Đã code nhưng là "miếng dán" hiệu ứng thị giác (BlurEffect), chưa xử lý pixel thật — xem TODO trong `AnnotationEditorWindow.xaml.cs` |
-| Crop | Vẽ được khung crop nhưng **chưa** áp dụng crop thật vào ảnh xuất — cần nối thêm logic cắt `BitmapSource`/canvas trước khi flatten |
+| Bộ icon vector dùng chung (không emoji) | Đã code — xem PRD mục 7 và `Views/Controls/`. `Assets/app.ico` xuất từ cùng bộ vector (`IconCamera`) cho icon .exe |
+| Blur/Pixelate trong trình chú thích | Đã code — xử lý pixel thật (`Services/PixelEffects.cs`: box blur / mosaic) khi flatten ảnh xuất, không còn là hiệu ứng thị giác tạm |
+| Crop | Đã code — áp dụng crop thật vào cả `BaseImage` lẫn mọi annotation khi flatten (xem `RenderFlattened` trong `AnnotationEditorWindow.xaml.cs`) |
 | Pin to Screen | Đã code |
 | Lịch sử chụp gần đây | Đã code (chỉ trong phiên hiện tại, chưa lưu ổ đĩa) |
-| Cài đặt (hotkey, thư mục lưu, tuỳ chọn) | Đã code (riêng "khởi động cùng Windows" chưa nối registry — xem TODO trong `SettingsWindow.xaml.cs`) |
+| Cài đặt (hotkey, thư mục lưu, tuỳ chọn, khởi động cùng Windows) | Đã code — "Khởi động cùng Windows" nối với `HKCU\...\Run` |
 | OCR | Đã code (Windows.Media.Ocr) |
+| Auto-update | Đã code — `Velopack` kiểm tra/tải/áp dụng bản mới từ GitHub Releases của repo lúc khởi động + tray menu "Kiểm tra cập nhật..." |
 | Chụp cuộn | Stub có outline thuật toán, chưa code |
 | Quay màn hình | Stub có outline triển khai, chưa code |
 | Chia sẻ cloud | Stub interface, cần chốt backend trước (xem PRD mục 8) |
 
+## CI/CD
+
+`.github/workflows/build.yml`: build + kiểm tra biên dịch trên `windows-latest` ở mỗi push, chạy app
+với `--screenshot-demo` (xem `App.ScreenshotDemo.cs`) để chụp ảnh demo UI thật từ chính app rồi đăng
+làm artifact. `.github/workflows/release.yml`: khi push tag `vX.Y.Z`, publish self-contained win-x64,
+đóng gói bằng `vpk` (Velopack) thành installer + delta/full nupkg, và đăng lên GitHub Releases —
+đây cũng chính là nguồn mà auto-update trong app đọc để kiểm tra bản mới.
+
 ## Việc cần làm tiếp theo (ưu tiên theo thứ tự)
 
-1. Build thử trên Windows, sửa các lỗi biên dịch nhỏ nếu có (chưa chạy thử thực tế trong phiên này).
-2. Thêm `Assets/app.ico` cho file .exe (hiển thị trong Explorer/Alt-Tab) — nên xuất từ cùng bộ vector
-   trong `Views/Controls/Icons.xaml` (vd icon `IconCamera`) để đồng nhất hình ảnh; tray icon lúc chạy
-   đã tự render từ Geometry đó nên không cần file .ico riêng cho tray.
-3. Hoàn thiện Crop: sau khi người dùng kéo khung crop và xác nhận, cắt cả `BaseImage` lẫn mọi
-   annotation đã vẽ theo đúng vùng chọn trước khi flatten.
-4. Nối "Khởi động cùng Windows" với registry key `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-5. Viết `ScrollingCaptureService`, `ScreenRecordingService`, `ShareService` theo outline đã có
+1. Viết `ScrollingCaptureService`, `ScreenRecordingService`, `ShareService` theo outline đã có
    trong từng file — đây là các khối việc lớn nhất còn lại, mỗi cái nên làm riêng một nhánh/PR.
-6. Đóng gói cài đặt: MSIX (khuyến nghị, tích hợp tốt với Windows 11, auto-update qua Store hoặc
-   sideload) hoặc Inno Setup installer truyền thống.
+2. Ký code (code signing) cho installer nếu muốn tránh cảnh báo SmartScreen khi phân phối rộng
+   (xem PRD mục 8) — hiện tại release chưa ký, người dùng sẽ thấy cảnh báo Windows Defender SmartScreen.
+3. Cân nhắc thêm test tự động (unit test cho `Services/`, vốn không phụ thuộc WPF Window nên dễ test).
