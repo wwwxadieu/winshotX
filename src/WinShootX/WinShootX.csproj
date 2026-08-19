@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- windows10.0.19041.0 mở khóa WinRT API (Windows.Media.Ocr, Windows.Graphics.Capture) dùng ở Giai đoạn 3-4 -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>WinShootX</AssemblyName>
+    <RootNamespace>WinShootX</RootNamespace>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <SelfContained>false</SelfContained>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Không cần PackageReference riêng cho WinRT interop: từ .NET 5 trở đi, khi TargetFramework có
+      hậu tố windows10.0.xxxxx.0 (như trên), SDK tự sinh projection cho namespace Windows.* (bao gồm
+      Windows.Media.Ocr dùng ở OcrService.cs, Windows.Graphics.Capture dùng ở Giai đoạn 3) — không cần
+      thêm gói Microsoft.Windows.CsWinRT thủ công.
+    -->
+    <!-- Icon tray -->
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
+    <!-- Auto-update: kiểm tra/tải/áp dụng bản mới từ GitHub Releases lúc khởi động (xem App.xaml.cs). -->
+    <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+<Window x:Class="WinShootX.Views.PinnedWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="CanResizeWithGrip">
+    <Border BorderBrush="#FF3B82F6" BorderThickness="1" Background="White">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.5" />
+        </Border.Effect>
+        <Grid>
+            <Image x:Name="PinnedImage" Stretch="Fill"
+                   MouseLeftButtonDown="OnDragMove"
+                   MouseRightButtonUp="OnContextMenu" />
+        </Grid>
+    </Border>
+</Window>
