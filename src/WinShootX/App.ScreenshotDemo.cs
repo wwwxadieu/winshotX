@@ -115,8 +115,8 @@ public partial class App
         Canvas.SetLeft(ctaNote, 258); Canvas.SetTop(ctaNote, 562);
         canvas.Children.Add(ctaNote);
 
-        AddStepBadge(canvas, new Point(70, 300), 1);
-        AddStepBadge(canvas, new Point(70, 378), 2);
+        AddStepBadge(canvas, new Point(28, 332), 1);
+        AddStepBadge(canvas, new Point(28, 410), 2);
 
         var emailFieldRegion = new Rect(60, 312, 340, 40);
         var blurBrush = new VisualBrush(editor.BaseImage)
