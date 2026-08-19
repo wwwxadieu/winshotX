@@ -1,0 +1,30 @@
+<Window x:Class="WinShootX.Views.CaptureBarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:WinShootX.Views.Controls"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual">
+    <Border Background="#F21F2937" CornerRadius="10" Padding="6">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.4" />
+        </Border.Effect>
+        <StackPanel Orientation="Horizontal">
+            <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,6,0" ClipToBounds="True">
+                <Image x:Name="Thumbnail" Stretch="UniformToFill" />
+            </Border>
+
+            <c:IconButton IconData="{StaticResource IconPencil}" Content="Chú thích" Click="OnAnnotateClick" />
+            <c:IconButton IconData="{StaticResource IconPin}" Content="Ghim" Click="OnPinClick" />
+            <c:IconButton IconData="{StaticResource IconOcr}" Content="Nhận diện văn bản" Click="OnOcrClick" />
+            <c:IconButton IconData="{StaticResource IconSave}" Content="Lưu" Click="OnSaveClick" />
+            <c:IconButton IconData="{StaticResource IconCopy}" Content="Sao chép" Click="OnCopyClick" />
+            <c:IconButton IconData="{StaticResource IconShare}" Content="Chia sẻ" Click="OnShareClick" />
+            <c:IconButton IconData="{StaticResource IconClose}" Click="OnCloseClick" Padding="8,6" ToolTip="Đóng" />
+        </StackPanel>
+    </Border>
+</Window>

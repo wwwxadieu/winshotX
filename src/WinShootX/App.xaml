@@ -1,0 +1,18 @@
+<Application x:Class="WinShootX.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <!--
+        ShutdownMode="OnExplicitShutdown": app không có MainWindow, chạy nền dưới tray icon.
+        App chỉ thoát khi người dùng chọn "Thoát" trong tray menu (App.xaml.cs gọi Shutdown()).
+    -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Bộ icon vector + style IconButton/IconToggleButton dùng chung toàn app — xem quy tắc
+                     thiết kế "không emoji" trong Icons.xaml. -->
+                <ResourceDictionary Source="Views/Controls/IconControls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

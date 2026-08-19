@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (semver, e.g. 0.1.0) — used when triggering manually instead of by pushing a tag"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Derive version and tag
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ github.event.inputs.version }}"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+            version="${tag#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      # Khi chạy thủ công (workflow_dispatch) chưa có sẵn tag git — tạo và push ngay tại đây bằng
+      # GITHUB_TOKEN của chính workflow (đủ quyền contents:write) thay vì yêu cầu người gọi phải push
+      # tag từ máy cá nhân trước.
+      - name: Create and push release tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Win ShootX ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Restore
+        run: dotnet restore src/WinShootX.sln
+
+      - name: Publish (win-x64)
+        run: >
+          dotnet publish src/WinShootX/WinShootX.csproj -c Release -r win-x64
+          --self-contained true -o publish/win-x64
+          -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Generate UI demo screenshots
+        run: |
+          $proc = Start-Process -FilePath "publish\win-x64\WinShootX.exe" -ArgumentList "--screenshot-demo","screenshots" -PassThru
+          $proc.WaitForExit(60000) | Out-Null
+          if (-not (Test-Path "screenshots\05-pinned.png")) {
+            throw "Screenshot generation did not produce the expected output files."
+          }
+        shell: pwsh
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk --version 1.2.0
+
+      - name: Fetch previous release (for delta updates)
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Pack Velopack release
+        run: >
+          vpk pack --packId WinShootX --packVersion ${{ steps.version.outputs.version }}
+          --packDir publish/win-x64 --mainExe WinShootX.exe
+          --packTitle "Win ShootX" --icon src/WinShootX/Assets/app.ico
+          --outputDir releases
+
+      - name: Publish to GitHub Releases
+        run: >
+          vpk upload github --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }} --publish
+          --releaseName "Win ShootX ${{ steps.version.outputs.version }}"
+          --tag ${{ steps.version.outputs.tag }}
+
+      - name: Attach UI demo screenshots to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.version.outputs.tag }}" screenshots/*.png --clobber
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winshotx-screenshots
+          path: screenshots/*.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winshotx-releases
+          path: releases/**

@@ -1,0 +1,58 @@
+<Window x:Class="WinShootX.Views.AnnotationEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:WinShootX.Views.Controls"
+        Title="Win ShootX — Chú thích" Height="720" Width="1100"
+        WindowStartupLocation="CenterScreen"
+        Background="#1E1F24">
+    <DockPanel>
+        <!-- Toolbar trên: chọn công cụ -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Background="#FF14151A" Height="52">
+            <c:IconToggleButton x:Name="ToolArrow" IconData="{StaticResource IconArrow}" Content="Mũi tên" Checked="OnToolChecked" Tag="Arrow" />
+            <c:IconToggleButton x:Name="ToolRect" IconData="{StaticResource IconRectangle}" Content="Chữ nhật" Checked="OnToolChecked" Tag="Rectangle" />
+            <c:IconToggleButton x:Name="ToolEllipse" IconData="{StaticResource IconEllipse}" Content="Oval" Checked="OnToolChecked" Tag="Ellipse" />
+            <c:IconToggleButton x:Name="ToolFreehand" IconData="{StaticResource IconPencil}" Content="Bút vẽ" Checked="OnToolChecked" Tag="Freehand" />
+            <c:IconToggleButton x:Name="ToolText" IconData="{StaticResource IconTextTool}" Content="Chữ" Checked="OnToolChecked" Tag="Text" />
+            <c:IconToggleButton x:Name="ToolHighlight" IconData="{StaticResource IconHighlighter}" Content="Highlight" Checked="OnToolChecked" Tag="Highlight" />
+            <c:IconToggleButton x:Name="ToolBlur" IconData="{StaticResource IconBlur}" Content="Làm mờ" Checked="OnToolChecked" Tag="Blur" />
+            <c:IconToggleButton x:Name="ToolStep" IconData="{StaticResource IconStepNumber}" Content="Số bước" Checked="OnToolChecked" Tag="StepNumber" />
+            <c:IconToggleButton x:Name="ToolCrop" IconData="{StaticResource IconCrop}" Content="Crop" Checked="OnToolChecked" Tag="Crop" />
+
+            <Rectangle Width="1" Fill="#33FFFFFF" Margin="8,10" />
+
+            <ItemsControl x:Name="ColorSwatches" ItemsSource="{Binding SwatchColors, RelativeSource={RelativeSource AncestorType=Window}}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="20" Height="20" CornerRadius="10" Margin="3" Background="{Binding}"
+                                MouseLeftButtonDown="OnSwatchClick" Cursor="Hand" BorderBrush="White" BorderThickness="1" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <!-- Toolbar dưới: actions -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Background="#FF14151A" Height="52"
+                    HorizontalAlignment="Right">
+            <c:IconButton IconData="{StaticResource IconUndo}" Content="Undo" Click="OnUndoClick" Style="{StaticResource GhostIconButton}" />
+            <c:IconButton IconData="{StaticResource IconRedo}" Content="Redo" Click="OnRedoClick" Style="{StaticResource GhostIconButton}" />
+            <c:IconButton IconData="{StaticResource IconCopy}" Content="Sao chép" Click="OnCopyClick" Style="{StaticResource PrimaryIconButton}" />
+            <c:IconButton IconData="{StaticResource IconSave}" Content="Lưu" Click="OnSaveClick" Style="{StaticResource PrimaryIconButton}" />
+            <c:IconButton IconData="{StaticResource IconClose}" Content="Đóng" Click="OnCloseClick" Style="{StaticResource GhostIconButton}" Margin="4,0,12,0" />
+        </StackPanel>
+
+        <Border Background="#FF0F1013">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <Image x:Name="BaseImage" Stretch="None" />
+                    <Canvas x:Name="AnnotationCanvas" Background="Transparent"
+                            MouseDown="OnCanvasMouseDown" MouseMove="OnCanvasMouseMove" MouseUp="OnCanvasMouseUp" />
+                </Grid>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</Window>

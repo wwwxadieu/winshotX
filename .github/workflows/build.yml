@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "src/**"
+      - ".github/workflows/build.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/build.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore src/WinShootX.sln
+
+      - name: Build
+        run: dotnet build src/WinShootX.sln -c Release --no-restore
+
+      - name: Publish (win-x64)
+        run: >
+          dotnet publish src/WinShootX/WinShootX.csproj -c Release -r win-x64
+          --self-contained true -o publish/win-x64
+
+      - name: Generate UI demo screenshots
+        # Chạy chính app đã build (không phải mock) với dữ liệu mẫu, chụp lại các cửa sổ chính ra PNG.
+        # Chạy được vì windows-latest có desktop tương tác thật (Session 1), không phải headless.
+        run: |
+          $proc = Start-Process -FilePath "publish\win-x64\WinShootX.exe" -ArgumentList "--screenshot-demo","screenshots" -PassThru
+          $proc.WaitForExit(60000) | Out-Null
+          if (-not (Test-Path "screenshots\05-pinned.png")) {
+            throw "Screenshot generation did not produce the expected output files."
+          }
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winshotx-screenshots
+          path: screenshots/*.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winshotx-win-x64
+          path: publish/win-x64/**
