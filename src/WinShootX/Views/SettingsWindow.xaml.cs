@@ -20,6 +20,8 @@ public partial class SettingsWindow : Window
         RegionHotkeyBox.Text = s.RegionCaptureHotkey;
         FullScreenHotkeyBox.Text = s.FullScreenCaptureHotkey;
         WindowHotkeyBox.Text = s.WindowCaptureHotkey;
+        ScrollHotkeyBox.Text = s.ScrollingCaptureHotkey;
+        RecordHotkeyBox.Text = s.ScreenRecordingHotkey;
         SaveDirBox.Text = s.SaveDirectory;
         CopyAfterCaptureCheck.IsChecked = s.CopyToClipboardAfterCapture;
         OpenAnnotatorCheck.IsChecked = s.OpenAnnotatorAfterCapture;
@@ -41,6 +43,8 @@ public partial class SettingsWindow : Window
         s.RegionCaptureHotkey = RegionHotkeyBox.Text;
         s.FullScreenCaptureHotkey = FullScreenHotkeyBox.Text;
         s.WindowCaptureHotkey = WindowHotkeyBox.Text;
+        s.ScrollingCaptureHotkey = ScrollHotkeyBox.Text;
+        s.ScreenRecordingHotkey = RecordHotkeyBox.Text;
         s.SaveDirectory = SaveDirBox.Text;
         s.CopyToClipboardAfterCapture = CopyAfterCaptureCheck.IsChecked == true;
         s.OpenAnnotatorAfterCapture = OpenAnnotatorCheck.IsChecked == true;

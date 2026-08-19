@@ -1,0 +1,24 @@
+<Window x:Class="WinShootX.Views.RecordingControlWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:WinShootX.Views.Controls"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual">
+    <Border Background="#F21F2937" CornerRadius="10" Padding="6">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.4" />
+        </Border.Effect>
+        <StackPanel Orientation="Horizontal">
+            <Path Data="{StaticResource IconRecord}" Fill="#FFEF4444" Stroke="#FFEF4444"
+                  Width="12" Height="12" Margin="8,0,8,0" VerticalAlignment="Center" Stretch="Uniform" />
+            <TextBlock x:Name="ElapsedText" Text="00:00" Foreground="White" FontSize="14"
+                       FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" MinWidth="42" />
+            <c:IconButton IconData="{StaticResource IconStop}" Content="Dừng" Click="OnStopClick" />
+        </StackPanel>
+    </Border>
+</Window>

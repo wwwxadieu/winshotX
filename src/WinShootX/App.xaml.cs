@@ -23,6 +23,8 @@ public partial class App : Application
     private TaskbarIcon? _trayIcon;
     private HotkeyManager? _hotkeyManager;
     private readonly ScreenCaptureService _captureService = new();
+    private readonly ScrollingCaptureService _scrollingCaptureService = new();
+    private readonly ScreenRecordingService _recordingService = new();
     private readonly SettingsService _settingsService = new();
     private readonly HistoryService _historyService = new();
 
@@ -75,6 +77,8 @@ public partial class App : Application
         AddMenuItem(menu, "Chụp vùng chọn", "IconCrop", (_, _) => StartCapture(CaptureMode.Region));
         AddMenuItem(menu, "Chụp toàn màn hình", "IconFullScreen", (_, _) => StartCapture(CaptureMode.FullScreen));
         AddMenuItem(menu, "Chụp cửa sổ hiện tại", "IconWindowCapture", (_, _) => StartCapture(CaptureMode.Window));
+        AddMenuItem(menu, "Chụp cuộn trang", "IconScroll", (_, _) => _ = StartScrollingCaptureAsync());
+        AddMenuItem(menu, "Quay màn hình", "IconRecord", (_, _) => StartScreenRecording());
         menu.Items.Add(new System.Windows.Controls.Separator());
         AddMenuItem(menu, "Lịch sử chụp gần đây", "IconHistory", (_, _) => new HistoryWindow(_historyService).Show());
         AddMenuItem(menu, "Cài đặt...", "IconSettings", (_, _) => new SettingsWindow(_settingsService).Show());
@@ -142,6 +146,8 @@ public partial class App : Application
         TryRegister(s.RegionCaptureHotkey, () => StartCapture(CaptureMode.Region));
         TryRegister(s.FullScreenCaptureHotkey, () => StartCapture(CaptureMode.FullScreen));
         TryRegister(s.WindowCaptureHotkey, () => StartCapture(CaptureMode.Window));
+        TryRegister(s.ScrollingCaptureHotkey, () => _ = StartScrollingCaptureAsync());
+        TryRegister(s.ScreenRecordingHotkey, StartScreenRecording);
     }
 
     private void TryRegister(string hotkey, Action callback)
@@ -197,6 +203,87 @@ public partial class App : Application
         {
             new CaptureBarWindow(result, _settingsService).Show();
         }
+    }
+
+    /// <summary>Chụp cuộn: yêu cầu người dùng đã đưa chuột vào cửa sổ/trang cần chụp trước khi gọi
+    /// (qua hotkey hoặc tray menu) — xem <see cref="ScrollingCaptureService"/> để biết vì sao.</summary>
+    private async Task StartScrollingCaptureAsync()
+    {
+        try
+        {
+            var image = await _scrollingCaptureService.CaptureAsync();
+            if (image == null)
+            {
+                _trayIcon?.ShowBalloonTip("Win ShootX",
+                    "Không tìm thấy cửa sổ hợp lệ dưới con trỏ chuột. Đưa chuột vào trang cần chụp cuộn rồi thử lại.",
+                    BalloonIcon.Warning);
+                return;
+            }
+
+            OnCaptureCompleted(new CaptureResult
+            {
+                Image = image,
+                SourceBounds = new Rect(0, 0, image.PixelWidth, image.PixelHeight),
+            });
+        }
+        catch (Exception ex)
+        {
+            _trayIcon?.ShowBalloonTip("Win ShootX", $"Chụp cuộn thất bại: {ex.Message}", BalloonIcon.Error);
+        }
+    }
+
+    /// <summary>Quay màn hình: người dùng kéo chọn vùng quay (tái dùng RegionSelectorWindow), sau đó
+    /// thanh điều khiển nổi (<see cref="RecordingControlWindow"/>) hiện ra cho tới khi bấm Dừng.</summary>
+    private void StartScreenRecording()
+    {
+        if (_recordingService.IsRecording)
+        {
+            _trayIcon?.ShowBalloonTip("Win ShootX", "Đang quay màn hình rồi.", BalloonIcon.Info);
+            return;
+        }
+
+        var selector = new RegionSelectorWindow();
+        selector.RegionSelected += async region =>
+        {
+            var regionRect = new Rect(region.X, region.Y, region.Width, region.Height);
+            try
+            {
+                await _recordingService.StartAsync(region, new RecordingOptions(), _settingsService.Current.SaveDirectory);
+            }
+            catch (Exception ex)
+            {
+                _trayIcon?.ShowBalloonTip("Win ShootX", $"Không bắt đầu quay được: {ex.Message}", BalloonIcon.Error);
+                return;
+            }
+
+            var controlWindow = new RecordingControlWindow(_recordingService, regionRect);
+            controlWindow.RecordingStopped += OnRecordingStopped;
+            controlWindow.Show();
+        };
+        selector.Show();
+    }
+
+    private async void OnRecordingStopped(string mp4Path)
+    {
+        var choice = MessageBox.Show(
+            $"Đã lưu video:\n{mp4Path}\n\nXuất thêm bản GIF?",
+            "Quay màn hình hoàn tất", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+        if (choice == MessageBoxResult.Yes)
+        {
+            try
+            {
+                var gifPath = await _recordingService.ExportGifAsync(mp4Path);
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{gifPath}\"");
+                return;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Xuất GIF thất bại: {ex.Message}", "Win ShootX", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{mp4Path}\"");
     }
 
     /// <summary>

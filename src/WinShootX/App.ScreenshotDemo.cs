@@ -64,6 +64,13 @@ public partial class App
         PumpLayout(pinned);
         SaveWindowScreenshot(pinned, System.IO.Path.Combine(outDir, "05-pinned.png"));
         pinned.Close();
+
+        var recordingControl = new RecordingControlWindow(new ScreenRecordingService(), new Rect(200, 200, 500, 320));
+        recordingControl.Show();
+        recordingControl.ElapsedText.Text = "01:24"; // giả lập đang quay được 1:24 để ảnh demo có nội dung, không phải 00:00
+        PumpLayout(recordingControl);
+        SaveWindowScreenshot(recordingControl, System.IO.Path.Combine(outDir, "06-recording.png"));
+        recordingControl.Close();
     }
 
     private static void PumpLayout(Window window)
