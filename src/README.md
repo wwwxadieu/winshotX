@@ -77,7 +77,7 @@ WinShootX/
 | Crop | Đã code — áp dụng crop thật vào cả `BaseImage` lẫn mọi annotation khi flatten (xem `RenderFlattened` trong `AnnotationEditorWindow.xaml.cs`) |
 | Pin to Screen | Đã code |
 | Lịch sử chụp gần đây | Đã code (chỉ trong phiên hiện tại, chưa lưu ổ đĩa) |
-| Cài đặt (hotkey, thư mục lưu, tuỳ chọn, khởi động cùng Windows) | Đã code — "Khởi động cùng Windows" nối với `HKCU\...\Run` |
+| Cài đặt (hotkey, thư mục lưu, tuỳ chọn, khởi động cùng Windows) | Đã code — "Khởi động cùng Windows" nối với `HKCU\...\Run`. Ô textbox bo góc mềm mại (`Views/Controls/TextBoxStyle.xaml`, áp dụng toàn app). Hotkey bị app khác chiếm dụng lúc khởi động được viền đỏ + tooltip trực tiếp trong Cài đặt (không chỉ dựa vào balloon tip thoáng qua) |
 | OCR | Đã code (Windows.Media.Ocr) |
 | Auto-update | Đã code — `Velopack` kiểm tra/tải/áp dụng bản mới từ GitHub Releases của repo lúc khởi động + tray menu "Kiểm tra cập nhật..." |
 | Chụp cuộn | Đã code (`ScrollingCaptureService`) — đưa chuột vào cửa sổ/trang cần chụp rồi bấm `Ctrl+Shift+6` hoặc tray menu "Chụp cuộn trang". Xem giới hạn đã biết (sticky header, nội dung động) trong doc comment của service |
@@ -102,6 +102,14 @@ kiểm thử end-to-end trong phiên làm việc tạo ra bước này — cần
 Chưa có chứng chỉ? Cân nhắc Azure Trusted Signing (~$9.99/tháng, không cần mua EV cert đắt đỏ,
 SmartScreen tin cậy nhanh hơn OV cert thường) — `vpk pack` cũng hỗ trợ thẳng qua flag
 `--azureTrustedSignFile`.
+
+**Vị trí cài đặt:** `WinShootX-win-Setup.exe` (bản one-click mặc định của Velopack) luôn cài cố định
+vào `%LocalAppData%\WinShootX`, không hỏi gì — đây là đánh đổi có chủ đích để auto-update chạy mượt
+(xem docs.velopack.io/packaging/installer). Muốn cài vào nơi khác có 2 cách: (1) chạy
+`WinShootXSetup.exe --installto <thư_mục>` từ dòng lệnh, hoặc (2) dùng bản `.msi` cũng được đăng kèm
+trong mỗi release (`vpk pack --msi --instLocation Either`) — installer Windows Installer chuẩn, cho
+chọn phạm vi cài đặt (per-user/per-machine) lúc cài. *Lưu ý: bản `.msi` mới thêm, cần xác nhận lại
+trải nghiệm cài đặt thực tế trên máy Windows thật.*
 
 ## Việc cần làm tiếp theo (ưu tiên theo thứ tự)
 
