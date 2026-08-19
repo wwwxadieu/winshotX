@@ -18,17 +18,16 @@
 #define MyAppName "Win ShootX"
 #define MyAppPublisher "wwwxadieu"
 #define MyAppExeName "WinShootX.exe"
-; Không bọc dấu {} quanh GUID ở đây — xem cách dùng "{{#MyAppId}" bên dưới để thoát đúng ký tự "{"
-; theo quy ước của Inno Setup (dấu {{ ở đầu directive value là escape cho 1 dấu { thật).
-#define MyAppId "081F9E36-3D78-4E7E-8D7B-E44B7D942AC1"
 
 [Setup]
 ; NOTE: AppId phải giữ nguyên GUID này qua mọi phiên bản để Inno Setup nhận diện đúng là bản nâng
 ; cấp (upgrade) thay vì coi là 1 app khác khi người dùng cài đè bản mới lên bản cũ.
-; "{{#MyAppId}}": dấu "}" đầu đóng token preprocessor {#MyAppId} (bị ISPP "nuốt", không xuất ra văn
-; bản), dấu "}" thứ 2 mới là ký tự "}" thật còn lại của GUID — thiếu nó sẽ lỗi "missing }" vì ISCC
-; hiểu nhầm thành đang mở 1 constant reference chưa đóng (đã gặp lỗi này khi build thử qua CI).
-AppId={{#MyAppId}}
+; Viết thẳng GUID tại đây (không qua #define + {#macro}) để tránh 2 lớp escape chồng nhau giữa ISPP
+; và core compiler — nguồn gốc 2 lần build lỗi trước đó. Ở cấp core compiler, "{{" là escape cho 1
+; dấu "{" thật; theo sau là GUID thô, đóng lại bởi dấu "}" cuối vốn có của chính GUID. Kết quả sau
+; khi dựng là "{081F9E36-3D78-4E7E-8D7B-E44B7D942AC1}" — đúng định dạng AppId cần. Đây là cách viết
+; tiêu chuẩn mà chính Inno Setup Wizard sinh ra khi tạo project mới.
+AppId={{081F9E36-3D78-4E7E-8D7B-E44B7D942AC1}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
