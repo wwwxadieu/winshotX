@@ -22,6 +22,10 @@ public partial class App : Application
 
     private TaskbarIcon? _trayIcon;
     private HotkeyManager? _hotkeyManager;
+    // Phím tắt đã khai báo trong Cài đặt nhưng không đăng ký được lúc khởi động (bị app khác chiếm
+    // dụng) — SettingsWindow đọc tập này để đánh dấu trực quan ô nào đang "hỏng", thay vì chỉ dựa vào
+    // balloon tip thoáng qua lúc khởi động mà người dùng dễ bỏ lỡ.
+    private readonly HashSet<string> _conflictingHotkeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly ScreenCaptureService _captureService = new();
     private readonly ScrollingCaptureService _scrollingCaptureService = new();
     private readonly ScreenRecordingService _recordingService = new();
@@ -81,7 +85,7 @@ public partial class App : Application
         AddMenuItem(menu, "Quay màn hình", "IconRecord", (_, _) => StartScreenRecording());
         menu.Items.Add(new System.Windows.Controls.Separator());
         AddMenuItem(menu, "Lịch sử chụp gần đây", "IconHistory", (_, _) => new HistoryWindow(_historyService).Show());
-        AddMenuItem(menu, "Cài đặt...", "IconSettings", (_, _) => new SettingsWindow(_settingsService).Show());
+        AddMenuItem(menu, "Cài đặt...", "IconSettings", (_, _) => new SettingsWindow(_settingsService, _conflictingHotkeys).Show());
         AddMenuItem(menu, "Kiểm tra cập nhật...", "IconUpdate", (_, _) => _ = CheckForUpdatesAsync(showUpToDateNotice: true));
         menu.Items.Add(new System.Windows.Controls.Separator());
         AddMenuItem(menu, "Thoát", "IconExit", (_, _) => Shutdown());
@@ -154,7 +158,9 @@ public partial class App : Application
     {
         if (_hotkeyManager != null && !_hotkeyManager.Register(hotkey, callback))
         {
-            // Hotkey có thể đã bị app khác chiếm dụng — thông báo thay vì fail âm thầm.
+            // Hotkey có thể đã bị app khác chiếm dụng — thông báo thay vì fail âm thầm, và ghi nhớ lại
+            // để SettingsWindow đánh dấu rõ ô nào đang lỗi (xem _conflictingHotkeys).
+            _conflictingHotkeys.Add(hotkey);
             _trayIcon?.ShowBalloonTip("Win ShootX",
                 $"Không thể đăng ký phím tắt '{hotkey}' (có thể đã được app khác dùng). Đổi trong Cài đặt.",
                 BalloonIcon.Warning);

@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using Microsoft.Win32;
 using WinShootX.Services;
 
@@ -9,9 +11,19 @@ public partial class SettingsWindow : Window
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "WinShootX";
 
+    private static readonly Brush ConflictBorderBrush = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+    private const string ConflictTooltip =
+        "Phím tắt này đang bị ứng dụng khác trên máy chiếm dụng nên không hoạt động — " +
+        "đổi sang tổ hợp phím khác rồi bấm Lưu và khởi động lại app.";
+
     private readonly SettingsService _settings;
 
-    public SettingsWindow(SettingsService settings)
+    /// <summary>
+    /// <paramref name="conflictingHotkeys"/>: các hotkey đã khai báo nhưng không đăng ký được lúc app
+    /// khởi động (xem _conflictingHotkeys trong App.xaml.cs) — dùng để đánh dấu trực quan ô nào đang
+    /// "hỏng" thay vì chỉ dựa vào balloon tip thoáng qua lúc khởi động.
+    /// </summary>
+    public SettingsWindow(SettingsService settings, HashSet<string>? conflictingHotkeys = null)
     {
         InitializeComponent();
         _settings = settings;
@@ -27,6 +39,34 @@ public partial class SettingsWindow : Window
         OpenAnnotatorCheck.IsChecked = s.OpenAnnotatorAfterCapture;
         LaunchAtStartupCheck.IsChecked = s.LaunchAtStartup;
         ShutterSoundCheck.IsChecked = s.PlayShutterSound;
+
+        if (conflictingHotkeys is { Count: > 0 })
+        {
+            MarkIfConflicting(RegionHotkeyBox, conflictingHotkeys);
+            MarkIfConflicting(FullScreenHotkeyBox, conflictingHotkeys);
+            MarkIfConflicting(WindowHotkeyBox, conflictingHotkeys);
+            MarkIfConflicting(ScrollHotkeyBox, conflictingHotkeys);
+            MarkIfConflicting(RecordHotkeyBox, conflictingHotkeys);
+        }
+    }
+
+    private static void MarkIfConflicting(TextBox box, HashSet<string> conflictingHotkeys)
+    {
+        if (!conflictingHotkeys.Contains(box.Text)) return;
+
+        box.BorderBrush = ConflictBorderBrush;
+        box.BorderThickness = new Thickness(1.5);
+        box.ToolTip = ConflictTooltip;
+
+        // Đánh dấu chỉ có ý nghĩa với giá trị lúc mở Settings — một khi người dùng gõ giá trị khác,
+        // gỡ đánh dấu ngay vì không còn biết tổ hợp mới có xung đột hay không (chỉ xác nhận được sau
+        // khi lưu + khởi động lại app).
+        box.TextChanged += (_, _) =>
+        {
+            box.ClearValue(BorderBrushProperty);
+            box.ClearValue(BorderThicknessProperty);
+            box.ToolTip = null;
+        };
     }
 
     private void OnBrowseClick(object sender, RoutedEventArgs e)

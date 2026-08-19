@@ -99,10 +99,15 @@ jobs:
             echo "Code signing skipped — no WINDOWS_PFX_BASE64 secret configured."
           fi
 
+          # --msi --instLocation Either: đóng gói thêm 1 bản .msi (dùng WiX) bên cạnh Setup.exe mặc
+          # định — Setup.exe cố định cài vào %LocalAppData%\WinShootX không hỏi gì (đánh đổi để
+          # auto-update chạy mượt, xem docs.velopack.io/packaging/installer), còn .msi cho người dùng
+          # chọn nơi cài (per-user/per-machine) qua trình cài đặt Windows Installer chuẩn.
           vpk pack --packId WinShootX --packVersion "${{ steps.version.outputs.version }}" \
             --packDir publish/win-x64 --mainExe WinShootX.exe \
             --packTitle "Win ShootX" --icon src/WinShootX/Assets/app.ico \
             --outputDir releases \
+            --msi --instLocation Either \
             "${sign_args[@]}"
 
           if [ -n "$cert_path" ]; then rm -f "$cert_path"; fi
