@@ -28,7 +28,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="6" Padding="{TemplateBinding Padding}">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{TemplateBinding IconData}" Stroke="{TemplateBinding Foreground}"
+                            <Path x:Name="Icon" Data="{TemplateBinding IconData}" Stroke="{TemplateBinding Foreground}"
                                   StrokeThickness="1.6" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                   Fill="Transparent" Stretch="Uniform"
                                   Width="{TemplateBinding IconSize}" Height="{TemplateBinding IconSize}"
@@ -42,6 +42,11 @@
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                        <!-- Nút chỉ icon (không đặt Content): bỏ khoảng đệm phải của icon vốn dành
+                             chỗ cho chữ, để icon nằm giữa padding thay vì lệch trái. -->
+                        <Trigger Property="Content" Value="{x:Null}">
+                            <Setter TargetName="Icon" Property="Margin" Value="0" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -64,7 +69,7 @@
                 <ControlTemplate TargetType="{x:Type c:IconToggleButton}">
                     <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{TemplateBinding IconData}" Stroke="{TemplateBinding Foreground}"
+                            <Path x:Name="Icon" Data="{TemplateBinding IconData}" Stroke="{TemplateBinding Foreground}"
                                   StrokeThickness="1.6" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                   Fill="Transparent" Stretch="Uniform"
                                   Width="{TemplateBinding IconSize}" Height="{TemplateBinding IconSize}"
@@ -78,6 +83,9 @@
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="#26FFFFFF" />
+                        </Trigger>
+                        <Trigger Property="Content" Value="{x:Null}">
+                            <Setter TargetName="Icon" Property="Margin" Value="0" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
