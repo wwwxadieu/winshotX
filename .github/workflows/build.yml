@@ -38,7 +38,7 @@ jobs:
         run: |
           $proc = Start-Process -FilePath "publish\win-x64\WinShootX.exe" -ArgumentList "--screenshot-demo","screenshots" -PassThru
           $proc.WaitForExit(60000) | Out-Null
-          if (-not (Test-Path "screenshots\05-pinned.png")) {
+          if (-not (Test-Path "screenshots\06-recording.png")) {
             throw "Screenshot generation did not produce the expected output files."
           }
         shell: pwsh

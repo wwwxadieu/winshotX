@@ -62,7 +62,7 @@ jobs:
         run: |
           $proc = Start-Process -FilePath "publish\win-x64\WinShootX.exe" -ArgumentList "--screenshot-demo","screenshots" -PassThru
           $proc.WaitForExit(60000) | Out-Null
-          if (-not (Test-Path "screenshots\05-pinned.png")) {
+          if (-not (Test-Path "screenshots\06-recording.png")) {
             throw "Screenshot generation did not produce the expected output files."
           }
         shell: pwsh
@@ -74,12 +74,38 @@ jobs:
         run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
+      # Ký code cho installer/exe — CHỈ chạy khi đã cấu hình 2 secret WINDOWS_PFX_BASE64 (nội dung
+      # file .pfx encode base64) và WINDOWS_PFX_PASSWORD trong Settings → Secrets and variables →
+      # Actions của repo. Chưa cấu hình thì bước này tự bỏ qua và release vẫn ra bình thường (chưa ký
+      # — Windows SmartScreen sẽ cảnh báo khi cài cho tới khi thêm cert thật). Dùng --signParams của
+      # vpk (gọi signtool.exe nội bộ) — xem https://docs.velopack.io/packaging/signing. Chưa có cert
+      # thật để thử end-to-end trong phiên làm việc này nên cú pháp bám sát tài liệu chính thức, cần
+      # người có cert xác nhận lại lần ký đầu tiên.
       - name: Pack Velopack release
-        run: >
-          vpk pack --packId WinShootX --packVersion ${{ steps.version.outputs.version }}
-          --packDir publish/win-x64 --mainExe WinShootX.exe
-          --packTitle "Win ShootX" --icon src/WinShootX/Assets/app.ico
-          --outputDir releases
+        shell: bash
+        env:
+          PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          sign_args=()
+          cert_path=""
+          if [ -n "$PFX_BASE64" ]; then
+            cert_path="$RUNNER_TEMP/winshootx-signing.pfx"
+            echo "$PFX_BASE64" | base64 -d > "$cert_path"
+            cert_path_win=$(cygpath -w "$cert_path")
+            sign_args=(--signParams "/td sha256 /fd sha256 /f \"$cert_path_win\" /p \"$PFX_PASSWORD\" /tr http://timestamp.digicert.com")
+            echo "Code signing enabled (WINDOWS_PFX_BASE64 secret found)."
+          else
+            echo "Code signing skipped — no WINDOWS_PFX_BASE64 secret configured."
+          fi
+
+          vpk pack --packId WinShootX --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir publish/win-x64 --mainExe WinShootX.exe \
+            --packTitle "Win ShootX" --icon src/WinShootX/Assets/app.ico \
+            --outputDir releases \
+            "${sign_args[@]}"
+
+          [ -n "$cert_path" ] && rm -f "$cert_path"
 
       - name: Publish to GitHub Releases
         run: >

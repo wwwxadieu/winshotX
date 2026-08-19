@@ -17,6 +17,8 @@ public sealed class CaptureSettings
     public string RegionCaptureHotkey { get; set; } = "Ctrl+Shift+4";
     public string FullScreenCaptureHotkey { get; set; } = "Ctrl+Shift+3";
     public string WindowCaptureHotkey { get; set; } = "Ctrl+Shift+5";
+    public string ScrollingCaptureHotkey { get; set; } = "Ctrl+Shift+6";
+    public string ScreenRecordingHotkey { get; set; } = "Ctrl+Shift+7";
 
     public int JpegQuality { get; set; } = 95;
 }
