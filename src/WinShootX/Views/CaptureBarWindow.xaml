@@ -18,12 +18,12 @@
                 <Image x:Name="Thumbnail" Stretch="UniformToFill" />
             </Border>
 
-            <c:IconButton IconData="{StaticResource IconPencil}" Content="Chú thích" Click="OnAnnotateClick" />
-            <c:IconButton IconData="{StaticResource IconPin}" Content="Ghim" Click="OnPinClick" />
-            <c:IconButton IconData="{StaticResource IconOcr}" Content="Nhận diện văn bản" Click="OnOcrClick" />
-            <c:IconButton IconData="{StaticResource IconSave}" Content="Lưu" Click="OnSaveClick" />
-            <c:IconButton IconData="{StaticResource IconCopy}" Content="Sao chép" Click="OnCopyClick" />
-            <c:IconButton IconData="{StaticResource IconShare}" Content="Chia sẻ" Click="OnShareClick" />
+            <c:IconButton IconData="{StaticResource IconPencil}" ToolTip="Chú thích" Click="OnAnnotateClick" />
+            <c:IconButton IconData="{StaticResource IconPin}" ToolTip="Ghim" Click="OnPinClick" />
+            <c:IconButton IconData="{StaticResource IconOcr}" ToolTip="Nhận diện văn bản" Click="OnOcrClick" />
+            <c:IconButton IconData="{StaticResource IconSave}" ToolTip="Lưu" Click="OnSaveClick" />
+            <c:IconButton IconData="{StaticResource IconCopy}" ToolTip="Sao chép" Click="OnCopyClick" />
+            <c:IconButton IconData="{StaticResource IconShare}" ToolTip="Chia sẻ" Click="OnShareClick" />
             <c:IconButton IconData="{StaticResource IconClose}" Click="OnCloseClick" Padding="8,6" ToolTip="Đóng" />
         </StackPanel>
     </Border>
