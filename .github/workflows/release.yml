@@ -59,6 +59,8 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }}
 
       - name: Generate UI demo screenshots
+        # Chạy chính app đã build (không phải mock) với dữ liệu mẫu, chụp lại các cửa sổ chính ra PNG.
+        # Chạy được vì windows-latest có desktop tương tác thật (Session 1), không phải headless.
         run: |
           $proc = Start-Process -FilePath "publish\win-x64\WinShootX.exe" -ArgumentList "--screenshot-demo","screenshots" -PassThru
           $proc.WaitForExit(60000) | Out-Null
@@ -67,63 +69,59 @@ jobs:
           }
         shell: pwsh
 
-      - name: Install vpk
-        run: dotnet tool install -g vpk --version 1.2.0
+      # Đóng gói bằng Inno Setup (có sẵn trên windows-latest, không cần cài thêm) thay cho Velopack —
+      # cho người dùng chọn thư mục cài qua nút Browse... trong wizard, điều Velopack (cả Setup.exe
+      # lẫn .msi) không hỗ trợ. Tên file output CỐ ĐỊNH (WinShootX-Setup.exe, không kèm số bản) vì
+      # Services/AppUpdateService.cs trong app dựa vào đúng tên này để tìm bản cài đặt mới nhất khi
+      # tự kiểm tra cập nhật — đổi tên ở đây thì phải đổi InstallerAssetName trong service tương ứng.
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\WinShootX.iss /DMyAppVersion=${{ steps.version.outputs.version }}
+          if ($LASTEXITCODE -ne 0) { throw "ISCC.exe failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path "installer-output\WinShootX-Setup.exe")) { throw "Installer output not found." }
 
-      - name: Fetch previous release (for delta updates)
-        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      # Ký code cho installer/exe — CHỈ chạy khi đã cấu hình 2 secret WINDOWS_PFX_BASE64 (nội dung
-      # file .pfx encode base64) và WINDOWS_PFX_PASSWORD trong Settings → Secrets and variables →
-      # Actions của repo. Chưa cấu hình thì bước này tự bỏ qua và release vẫn ra bình thường (chưa ký
-      # — Windows SmartScreen sẽ cảnh báo khi cài cho tới khi thêm cert thật). Dùng --signParams của
-      # vpk (gọi signtool.exe nội bộ) — xem https://docs.velopack.io/packaging/signing. Chưa có cert
-      # thật để thử end-to-end trong phiên làm việc này nên cú pháp bám sát tài liệu chính thức, cần
-      # người có cert xác nhận lại lần ký đầu tiên.
-      - name: Pack Velopack release
-        shell: bash
+      # Ký code cho installer — CHỈ chạy khi đã cấu hình 2 secret WINDOWS_PFX_BASE64 (nội dung file
+      # .pfx encode base64) và WINDOWS_PFX_PASSWORD trong Settings → Secrets and variables → Actions
+      # của repo. Chưa cấu hình thì bước này tự bỏ qua, release vẫn ra bình thường (chưa ký — Windows
+      # SmartScreen sẽ cảnh báo khi cài cho tới khi có cert thật). signtool.exe có sẵn trong Windows
+      # SDK đã cài trên windows-latest — dò đường dẫn thay vì hardcode vì số hiệu bản SDK có thể đổi
+      # giữa các lần cập nhật runner image. Chưa có cert thật để thử end-to-end trong phiên làm việc
+      # tạo ra bước này — cần xác nhận lại ở lần ký đầu tiên.
+      - name: Sign installer (optional)
+        shell: pwsh
         env:
           PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
           PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         run: |
-          sign_args=()
-          cert_path=""
-          if [ -n "$PFX_BASE64" ]; then
-            cert_path="$RUNNER_TEMP/winshootx-signing.pfx"
-            echo "$PFX_BASE64" | base64 -d > "$cert_path"
-            cert_path_win=$(cygpath -w "$cert_path")
-            sign_args=(--signParams "/td sha256 /fd sha256 /f \"$cert_path_win\" /p \"$PFX_PASSWORD\" /tr http://timestamp.digicert.com")
-            echo "Code signing enabled (WINDOWS_PFX_BASE64 secret found)."
-          else
-            echo "Code signing skipped — no WINDOWS_PFX_BASE64 secret configured."
-          fi
+          if (-not $env:PFX_BASE64) {
+            Write-Host "Code signing skipped — no WINDOWS_PFX_BASE64 secret configured."
+            exit 0
+          }
 
-          # --msi --instLocation Either: đóng gói thêm 1 bản .msi (dùng WiX) bên cạnh Setup.exe mặc
-          # định — Setup.exe cố định cài vào %LocalAppData%\WinShootX không hỏi gì (đánh đổi để
-          # auto-update chạy mượt, xem docs.velopack.io/packaging/installer), còn .msi cho người dùng
-          # chọn nơi cài (per-user/per-machine) qua trình cài đặt Windows Installer chuẩn.
-          vpk pack --packId WinShootX --packVersion "${{ steps.version.outputs.version }}" \
-            --packDir publish/win-x64 --mainExe WinShootX.exe \
-            --packTitle "Win ShootX" --icon src/WinShootX/Assets/app.ico \
-            --outputDir releases \
-            --msi --instLocation Either \
-            "${sign_args[@]}"
+          $certPath = Join-Path $env:RUNNER_TEMP "winshootx-signing.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:PFX_BASE64))
 
-          if [ -n "$cert_path" ]; then rm -f "$cert_path"; fi
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+                      Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found on this runner." }
+
+          & $signtool.FullName sign /f $certPath /p $env:PFX_PASSWORD /fd sha256 /td sha256 /tr http://timestamp.digicert.com "installer-output\WinShootX-Setup.exe"
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed with exit code $LASTEXITCODE" }
+
+          Remove-Item $certPath -Force
+          Write-Host "Code signing applied (WINDOWS_PFX_BASE64 secret found)."
 
       - name: Publish to GitHub Releases
-        run: >
-          vpk upload github --repoUrl https://github.com/${{ github.repository }}
-          --token ${{ secrets.GITHUB_TOKEN }} --publish
-          --releaseName "Win ShootX ${{ steps.version.outputs.version }}"
-          --tag ${{ steps.version.outputs.tag }}
-
-      - name: Attach UI demo screenshots to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ steps.version.outputs.tag }}" screenshots/*.png --clobber
         shell: bash
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "installer-output/WinShootX-Setup.exe" \
+            screenshots/*.png \
+            --title "Win ShootX ${{ steps.version.outputs.version }}" \
+            --notes "Win ShootX ${{ steps.version.outputs.version }}. Chạy WinShootX-Setup.exe để cài đặt — installer cho chọn thư mục cài qua nút Browse."
 
       - uses: actions/upload-artifact@v4
         with:
@@ -132,5 +130,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: winshotx-releases
-          path: releases/**
+          name: winshotx-installer
+          path: installer-output/*.exe

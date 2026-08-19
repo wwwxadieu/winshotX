@@ -2,8 +2,6 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Hardcodet.Wpf.TaskbarNotification;
-using Velopack;
-using Velopack.Sources;
 using WinShootX.Models;
 using WinShootX.Services;
 using WinShootX.Views;
@@ -17,9 +15,7 @@ namespace WinShootX;
 /// </summary>
 public partial class App : Application
 {
-    // URL repo GitHub công khai chứa các bản Release đã đóng gói qua Velopack (vpk) — nguồn auto-update.
-    private const string UpdateFeedUrl = "https://github.com/wwwxadieu/winshotX";
-
+    private readonly AppUpdateService _updateService = new();
     private TaskbarIcon? _trayIcon;
     private HotkeyManager? _hotkeyManager;
     // Phím tắt đã khai báo trong Cài đặt nhưng không đăng ký được lúc khởi động (bị app khác chiếm
@@ -31,15 +27,6 @@ public partial class App : Application
     private readonly ScreenRecordingService _recordingService = new();
     private readonly SettingsService _settingsService = new();
     private readonly HistoryService _historyService = new();
-
-    public App()
-    {
-        // Bắt buộc gọi càng sớm càng tốt, trước bất kỳ code nào khác: Velopack chặn và xử lý riêng
-        // các lần khởi động app do chính installer gọi để chạy hook cài đặt/gỡ cài đặt/cập nhật
-        // (--veloapp-install, --veloapp-updated, --veloapp-uninstall, ...) rồi thoát ngay — không để
-        // các hook đó vô tình chạy trúng luồng khởi động bình thường (đăng ký hotkey, hiện tray icon...).
-        VelopackApp.Build().Run();
-    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -293,44 +280,36 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Auto-update: kiểm tra bản mới trên GitHub Releases của repo, tải về nền, rồi tự khởi động lại
-    /// để áp dụng. Chạy 1 lần lúc khởi động (âm thầm, không có gì báo lỗi nếu offline/đã mới nhất) và
-    /// có thể gọi lại thủ công qua tray menu "Kiểm tra cập nhật...".
+    /// Auto-update: kiểm tra bản mới trên GitHub Releases của repo, tải installer mới về nền, rồi tự
+    /// chạy installer ở chế độ im lặng + khởi động lại để áp dụng. Chạy 1 lần lúc khởi động (âm thầm,
+    /// không báo gì nếu offline/đã mới nhất) và có thể gọi lại thủ công qua tray menu "Kiểm tra cập
+    /// nhật...". Xem AppUpdateService để biết lý do không còn dùng Velopack.
     /// </summary>
     private async Task CheckForUpdatesAsync(bool showUpToDateNotice)
     {
         try
         {
-            var mgr = new UpdateManager(new GithubSource(UpdateFeedUrl, accessToken: null, prerelease: false));
-
-            // Chạy trực tiếp từ build (F5/Debug) hay bản portable chưa qua installer Velopack: bỏ qua,
-            // tránh crash vì không có metadata cài đặt (Velopack chỉ hoạt động sau khi cài qua installer).
-            if (!mgr.IsInstalled)
-            {
-                if (showUpToDateNotice)
-                    _trayIcon?.ShowBalloonTip("Win ShootX",
-                        "Bản chạy hiện tại không phải bản đã cài qua installer nên không thể tự cập nhật.",
-                        BalloonIcon.Info);
-                return;
-            }
-
-            var newVersion = await mgr.CheckForUpdatesAsync();
-            if (newVersion == null)
+            var update = await _updateService.CheckForUpdateAsync();
+            if (update == null)
             {
                 if (showUpToDateNotice)
                     _trayIcon?.ShowBalloonTip("Win ShootX", "Bạn đang dùng phiên bản mới nhất.", BalloonIcon.Info);
                 return;
             }
 
-            await mgr.DownloadUpdatesAsync(newVersion);
+            _trayIcon?.ShowBalloonTip("Win ShootX",
+                $"Đang tải bản cập nhật {update.Version}...", BalloonIcon.Info);
+
+            var installerPath = await _updateService.DownloadInstallerAsync(update.DownloadUrl);
 
             _trayIcon?.ShowBalloonTip("Win ShootX",
-                $"Đã tải bản cập nhật {newVersion.TargetFullRelease.Version} — đang khởi động lại để áp dụng...",
+                $"Đã tải xong bản cập nhật {update.Version} — đang khởi động lại để cài đặt...",
                 BalloonIcon.Info);
 
-            // Cho người dùng vài giây để đọc thông báo trước khi tự thoát + cài bản mới + mở lại app.
+            // Cho người dùng vài giây để đọc thông báo trước khi cài + thoát app.
             await Task.Delay(TimeSpan.FromSeconds(4));
-            mgr.ApplyUpdatesAndRestart(newVersion);
+            AppUpdateService.RunSilentInstallAndRestart(installerPath);
+            Shutdown();
         }
         catch
         {

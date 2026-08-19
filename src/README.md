@@ -46,6 +46,7 @@ WinShootX/
 │   ├─ PixelEffects.cs         # box blur / mosaic pixel thật, dùng bởi AnnotationEditorWindow
 │   ├─ ScrollingCaptureService.cs  # ĐÃ triển khai — cuộn qua SendInput + ghép frame bằng row-hash overlap
 │   ├─ ScreenRecordingService.cs   # ĐÃ triển khai — quay MP4/GIF qua ffmpeg subprocess (gdigrab)
+│   ├─ AppUpdateService.cs         # ĐÃ triển khai — auto-update tự viết qua GitHub Releases API (xem mục CI/CD)
 │   └─ ShareService.cs             # STUB Giai đoạn 4 — interface IShareProvider, cần chọn backend
 ├─ Views/
 │   ├─ RegionSelectorWindow    # overlay trong suốt full-screen để kéo chọn vùng (dùng chung cho chụp lẫn quay)
@@ -79,45 +80,64 @@ WinShootX/
 | Lịch sử chụp gần đây | Đã code (chỉ trong phiên hiện tại, chưa lưu ổ đĩa) |
 | Cài đặt (hotkey, thư mục lưu, tuỳ chọn, khởi động cùng Windows) | Đã code — "Khởi động cùng Windows" nối với `HKCU\...\Run`. Ô textbox bo góc mềm mại (`Views/Controls/TextBoxStyle.xaml`, áp dụng toàn app). Hotkey bị app khác chiếm dụng lúc khởi động được viền đỏ + tooltip trực tiếp trong Cài đặt (không chỉ dựa vào balloon tip thoáng qua) |
 | OCR | Đã code (Windows.Media.Ocr) |
-| Auto-update | Đã code — `Velopack` kiểm tra/tải/áp dụng bản mới từ GitHub Releases của repo lúc khởi động + tray menu "Kiểm tra cập nhật..." |
+| Auto-update | Đã code — `Services/AppUpdateService.cs` (tự viết, không dùng Velopack — xem mục CI/CD) kiểm tra/tải/cài bản mới từ GitHub Releases của repo lúc khởi động + tray menu "Kiểm tra cập nhật..." |
 | Chụp cuộn | Đã code (`ScrollingCaptureService`) — đưa chuột vào cửa sổ/trang cần chụp rồi bấm `Ctrl+Shift+6` hoặc tray menu "Chụp cuộn trang". Xem giới hạn đã biết (sticky header, nội dung động) trong doc comment của service |
 | Quay màn hình | Đã code (`ScreenRecordingService`) — `Ctrl+Shift+7` hoặc tray menu "Quay màn hình" để chọn vùng và bắt đầu quay, xuất MP4 (qua ffmpeg gdigrab) + tuỳ chọn xuất thêm GIF sau khi dừng. **Cần cài `ffmpeg.exe` riêng** (không bundle sẵn trong installer — xem TODO bên dưới) và đặt trong PATH hoặc cùng thư mục WinShootX.exe. Chưa hỗ trợ thu âm thanh (báo lỗi rõ nếu bật `RecordingOptions.CaptureSystemAudio/CaptureMicrophone`) |
 | Chia sẻ cloud | Stub interface, cần chốt backend trước (xem PRD mục 8) — bỏ qua ở giai đoạn này theo quyết định của chủ dự án |
+
+## Đóng gói & Auto-update
+
+**Đã từ bỏ Velopack** (dùng ở các bản đầu) để chuyển sang **Inno Setup** — lý do: Velopack (cả bản
+`Setup.exe` one-click lẫn `.msi`) không cho người dùng chọn thư mục cài qua giao diện, chỉ có sẵn 2
+vị trí cố định (`%LocalAppData%` hoặc `Program Files` qua scope PerUser/PerMachine trong `.msi`) — đây
+là giới hạn kiến trúc cố ý của Velopack (để cơ chế auto-update nhị phân-delta của nó hoạt động), không
+sửa được bằng cấu hình. Đánh đổi khi chuyển sang Inno Setup: **mất auto-update có sẵn của Velopack**,
+nên phải tự viết cơ chế cập nhật riêng — xem `Services/AppUpdateService.cs`.
+
+**`installer/WinShootX.iss`**: script Inno Setup — cài mặc định vào `%LocalAppData%\Programs\WinShootX`
+(không cần quyền admin, quan trọng để auto-update chạy im lặng không bị UAC chặn giữa chừng), nhưng
+người dùng có thể bấm "Browse..." trong wizard để chọn bất kỳ thư mục nào tài khoản hiện tại có quyền
+ghi. Build bằng `ISCC.exe installer\WinShootX.iss /DMyAppVersion=X.Y.Z` — Inno Setup 6 có sẵn trên
+runner `windows-latest` của GitHub Actions, không cần cài thêm.
+
+**`Services/AppUpdateService.cs`**: tự viết bằng `HttpClient` + GitHub REST API (`/releases/latest`),
+không dùng thư viện update ngoài nào. So sánh `AssemblyVersion` runtime (SDK tự sinh từ MSBuild
+property `Version` lúc publish — xem `-p:Version=` trong `release.yml`) với tag của release mới nhất;
+nếu mới hơn thì tải file `WinShootX-Setup.exe` (tên CỐ ĐỊNH không đổi giữa các bản, khớp
+`OutputBaseFilename` trong file `.iss`) về, chạy `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` qua một
+lớp `cmd` đợi 2 giây để app hiện tại kịp thoát hẳn (giải phóng khoá file) trước khi installer ghi đè,
+rồi installer tự mở lại app sau khi cài xong. Đơn giản hơn Velopack (tải nguyên installer thay vì
+patch nhị phân delta) nhưng dễ hiểu/bảo trì và không phụ thuộc gì ngoài BCL.
 
 ## CI/CD
 
 `.github/workflows/build.yml`: build + kiểm tra biên dịch trên `windows-latest` ở mỗi push, chạy app
 với `--screenshot-demo` (xem `App.ScreenshotDemo.cs`) để chụp ảnh demo UI thật từ chính app rồi đăng
 làm artifact. `.github/workflows/release.yml`: khi push tag `vX.Y.Z` (hoặc chạy thủ công qua
-workflow_dispatch), publish self-contained win-x64, đóng gói bằng `vpk` (Velopack) thành installer +
-delta/full nupkg, và đăng lên GitHub Releases — đây cũng chính là nguồn mà auto-update trong app đọc
-để kiểm tra bản mới.
+workflow_dispatch), publish self-contained win-x64, build installer bằng Inno Setup (`ISCC.exe`), rồi
+đăng `WinShootX-Setup.exe` lên GitHub Releases qua `gh release create` — đây cũng chính là nguồn mà
+`AppUpdateService` trong app đọc để kiểm tra bản mới.
 
 **Ký code (code signing):** `release.yml` có sẵn bước ký cho installer, nhưng chỉ chạy khi đã cấu
 hình 2 secret `WINDOWS_PFX_BASE64` (nội dung file `.pfx` encode base64) và `WINDOWS_PFX_PASSWORD`
 trong Settings → Secrets and variables → Actions của repo trên GitHub. Chưa cấu hình thì bước này tự
-bỏ qua (release ra bình thường, chưa ký — Windows SmartScreen sẽ cảnh báo khi cài cho tới khi có
-cert thật). Dùng `--signParams` của `vpk` (gọi `signtool.exe` nội bộ). *Lưu ý: chưa có cert thật để
-kiểm thử end-to-end trong phiên làm việc tạo ra bước này — cần xác nhận lại ở lần ký đầu tiên.*
-Chưa có chứng chỉ? Cân nhắc Azure Trusted Signing (~$9.99/tháng, không cần mua EV cert đắt đỏ,
-SmartScreen tin cậy nhanh hơn OV cert thường) — `vpk pack` cũng hỗ trợ thẳng qua flag
-`--azureTrustedSignFile`.
-
-**Vị trí cài đặt:** `WinShootX-win-Setup.exe` (bản one-click mặc định của Velopack) luôn cài cố định
-vào `%LocalAppData%\WinShootX`, không hỏi gì — đây là đánh đổi có chủ đích để auto-update chạy mượt
-(xem docs.velopack.io/packaging/installer). Muốn cài vào nơi khác có 2 cách: (1) chạy
-`WinShootXSetup.exe --installto <thư_mục>` từ dòng lệnh, hoặc (2) dùng bản `.msi` cũng được đăng kèm
-trong mỗi release (`vpk pack --msi --instLocation Either`) — installer Windows Installer chuẩn, cho
-chọn phạm vi cài đặt (per-user/per-machine) lúc cài. *Lưu ý: bản `.msi` mới thêm, cần xác nhận lại
-trải nghiệm cài đặt thực tế trên máy Windows thật.*
+bỏ qua (release ra bình thường, chưa ký — Windows SmartScreen sẽ cảnh báo khi cài cho tới khi có cert
+thật). Dò đường dẫn `signtool.exe` trong Windows SDK có sẵn trên runner rồi gọi trực tiếp (không qua
+`vpk` nữa). *Lưu ý: chưa có cert thật để kiểm thử end-to-end trong phiên làm việc tạo ra bước này —
+cần xác nhận lại ở lần ký đầu tiên.* Chưa có chứng chỉ? Cân nhắc Azure Trusted Signing (~$9.99/tháng,
+không cần mua EV cert đắt đỏ, SmartScreen tin cậy nhanh hơn OV cert thường).
 
 ## Việc cần làm tiếp theo (ưu tiên theo thứ tự)
 
-1. Cung cấp `WINDOWS_PFX_BASE64` + `WINDOWS_PFX_PASSWORD` (hoặc chuyển sang Azure Trusted Signing)
-   để bật ký code thật cho release — xem mục CI/CD ở trên.
-2. Bundle sẵn `ffmpeg.exe` trong installer (hiện người dùng phải tự cài) — cân nhắc dùng
+1. Xác nhận thực tế trên máy Windows: cài lần đầu qua `WinShootX-Setup.exe` (bấm Browse chọn thư mục
+   khác mặc định), rồi thử auto-update từ bản cũ hơn — đây là lần đầu luồng Inno Setup +
+   `AppUpdateService` chạy thật, mới verify được qua CI (build/pack thành công) chứ chưa verify được
+   hành vi cài đặt/cập nhật thật trên máy người dùng.
+2. Cung cấp `WINDOWS_PFX_BASE64` + `WINDOWS_PFX_PASSWORD` (hoặc chuyển sang Azure Trusted Signing) để
+   bật ký code thật cho release — xem mục CI/CD ở trên.
+3. Bundle sẵn `ffmpeg.exe` trong installer (hiện người dùng phải tự cài) — cân nhắc dùng
    `Xabe.FFmpeg.Downloader` để tự tải ffmpeg lúc cài đặt/lần chạy đầu, hoặc đóng gói trực tiếp binary
    đã kiểm định vào `Assets/` nếu chấp nhận tăng dung lượng installer.
-3. `ShareService` (Cloud Sharing) — cần chốt backend trước khi code (xem PRD mục 8).
-4. Cân nhắc thêm test tự động (unit test cho `Services/`, vốn không phụ thuộc WPF Window nên dễ test)
+4. `ShareService` (Cloud Sharing) — cần chốt backend trước khi code (xem PRD mục 8).
+5. Cân nhắc thêm test tự động (unit test cho `Services/`, vốn không phụ thuộc WPF Window nên dễ test)
    — đặc biệt hữu ích cho `PixelEffects` và thuật toán row-hash overlap trong `ScrollingCaptureService`.

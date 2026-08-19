@@ -15,7 +15,11 @@
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <SelfContained>false</SelfContained>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Version được publish truyền qua -p:Version=X.Y.Z (xem release.yml) — SDK tự sinh
+         AssemblyVersion/AssemblyFileVersion từ giá trị này, đọc lại lúc runtime trong
+         Services/AppUpdateService.cs để biết bản đang chạy khi so sánh với GitHub Releases mới nhất.
+         Build cục bộ không truyền -p:Version thì dùng mặc định dưới đây. -->
+    <Version Condition="'$(Version)' == ''">0.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,8 +31,6 @@
     -->
     <!-- Icon tray -->
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
-    <!-- Auto-update: kiểm tra/tải/áp dụng bản mới từ GitHub Releases lúc khởi động (xem App.xaml.cs). -->
-    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
 </Project>
