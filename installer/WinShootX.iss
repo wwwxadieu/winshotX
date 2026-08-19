@@ -25,7 +25,10 @@
 [Setup]
 ; NOTE: AppId phải giữ nguyên GUID này qua mọi phiên bản để Inno Setup nhận diện đúng là bản nâng
 ; cấp (upgrade) thay vì coi là 1 app khác khi người dùng cài đè bản mới lên bản cũ.
-AppId={{#MyAppId}
+; "{{#MyAppId}}": dấu "}" đầu đóng token preprocessor {#MyAppId} (bị ISPP "nuốt", không xuất ra văn
+; bản), dấu "}" thứ 2 mới là ký tự "}" thật còn lại của GUID — thiếu nó sẽ lỗi "missing }" vì ISCC
+; hiểu nhầm thành đang mở 1 constant reference chưa đóng (đã gặp lỗi này khi build thử qua CI).
+AppId={{#MyAppId}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
