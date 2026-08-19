@@ -12,6 +12,8 @@
                 <!-- Bộ icon vector + style IconButton/IconToggleButton dùng chung toàn app — xem quy tắc
                      thiết kế "không emoji" trong Icons.xaml. -->
                 <ResourceDictionary Source="Views/Controls/IconControls.xaml" />
+                <!-- Style TextBox mặc định (bo góc mềm mại) áp dụng cho toàn app — xem TextBoxStyle.xaml. -->
+                <ResourceDictionary Source="Views/Controls/TextBoxStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

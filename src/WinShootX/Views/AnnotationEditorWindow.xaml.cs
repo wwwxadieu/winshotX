@@ -257,6 +257,8 @@ public partial class AnnotationEditorWindow : Window
             Foreground = _currentColor,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
+            Padding = new Thickness(0), // ghi đè Padding mặc định của style TextBox toàn app (xem
+                                         // TextBoxStyle.xaml) — chữ phải bắt đầu sát điểm click, không lùi vào trong.
             FontSize = 20,
             FontWeight = FontWeights.SemiBold,
             MinWidth = 60,
